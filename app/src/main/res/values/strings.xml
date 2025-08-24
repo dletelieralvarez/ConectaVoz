@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Semana02</string>
+    <string name="title_activity_registro_usuario">RegistroUsuario</string>
+    <string name="title_activity_login">Login</string>
+    <string name="title_activity_registro_user">RegistroUser</string>
+    <string name="title_activity_recuperar_password">RecuperarPassword</string>
+    <string name="title_activity_inicio">Inicio</string>
+</resources>
