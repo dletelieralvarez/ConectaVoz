@@ -64,12 +64,17 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicNone
+import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -77,18 +82,41 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.core.content.ContextCompat
 import java.util.Locale
+import android.os.Build
+import android.view.View
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Modo fullscreen
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.insetsController?.let { controller ->
+                controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                controller.systemBarsBehavior =
+                    WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = (
+                    View.SYSTEM_UI_FLAG_FULLSCREEN or
+                            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    )
+        }
+
         setContent {
             Semana02Theme {
                 Surface (
                     modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFFF6F0F0)
+                    color=MaterialTheme.colorScheme.background
+                    //color = Color(0xFFF6F0F0)
                 ) {
                     NavRouter()
                 }
@@ -100,22 +128,70 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun LoginFacilAcceso(navController: NavController, onLoginExitoso: () -> Unit){
-    val context = LocalContext.current
+    //val context = LocalContext.current
     var nombreUsuario by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var mostrarPassword by remember { mutableStateOf(false) }
 
+    //estados para hacer la personalización, modo oscuro y aumento de la fuente
+    var esModoOscuro by remember {mutableStateOf(false)}
+    var escalaDeFuente by remember {mutableStateOf(1f)}
+    //1f tamaño normal de la fuente
+
+    //defino colores dinamicos
+    val colors = if (esModoOscuro){
+        darkColorScheme(
+            primary = Color(0xFFE67E22),
+            onPrimary = Color.White,
+            background = Color(0xFF121212),
+            onBackground = Color.White
+        )
+    }else{
+        lightColorScheme(
+            primary = Color(0xFFE67E22),
+            onPrimary = Color.Black,
+            background = Color(0xFFFFFFFF),
+            onBackground = Color.Black
+        )
+    }
+
+    //tamaño de fuente escalable
+    val typography = Typography(
+        bodyLarge = TextStyle(
+            fontSize = (16.sp * escalaDeFuente),
+            fontFamily = FontFamily.SansSerif
+        ),
+        titleLarge = TextStyle(
+            fontSize = (28.sp * escalaDeFuente),
+            fontWeight = FontWeight.ExtraBold,
+            fontFamily = FontFamily.SansSerif
+        )
+    )
+
+    //inicia TTS global
+    val context = LocalContext.current
+    val tts = remember {
+        TextToSpeech(context) {status -> }
+    }
+
+    //función para leer al usuario
+    fun speak(text: String){
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+    }
+
+    MaterialTheme (colorScheme = colors, typography = typography){
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ){
+        //animación de Lottie
         val composition by rememberLottieComposition(
             spec = LottieCompositionSpec.RawRes(R.raw.contact)
         )
-
         val progress by animateLottieCompositionAsState(
             composition,
             iterations= LottieConstants.IterateForever
@@ -131,33 +207,19 @@ fun LoginFacilAcceso(navController: NavController, onLoginExitoso: () -> Unit){
 
         Text(
             text = "Acceso a ConectaVoz",
-            fontSize = 28.sp,
+            fontSize = (28.sp * escalaDeFuente),
             fontWeight = FontWeight.ExtraBold,
             fontFamily = FontFamily.SansSerif,
-            color = Color(0xFF4B4B3C)
+            //color = Color(0xFF4B4B3C)
+            color = MaterialTheme.colorScheme.onPrimary
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        var nombreUsuario by remember { mutableStateOf("") }
         NombreConVoz(
             nombre = nombreUsuario,
             onNombreChange = { nombreUsuario = it }
         )
-
-        //OutlinedTextField(
-        //    value = nombreUsuario,
-        //    onValueChange = { nombreUsuario = it },
-        //    label = { Text("Nombre de Usuario") },
-        //    modifier = Modifier.fillMaxWidth(),
-        //    singleLine = true,
-        //    colors = OutlinedTextFieldDefaults.colors(
-        //        focusedBorderColor = Color(0xFFE67E22),
-        //        unfocusedBorderColor = Color(0xFFB2BABB),
-        //        focusedLabelColor = Color(0xFFE67E22),
-        //        unfocusedLabelColor = Color(0xFF7F8C8D)
-        //    )
-        //)
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -195,46 +257,28 @@ fun LoginFacilAcceso(navController: NavController, onLoginExitoso: () -> Unit){
 
                 if (usuario != null) {
                     val mensaje = "Bienvenido ${usuario.nombreUsuario}"
-                    Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
-
-                    tts = TextToSpeech(context) { status ->
-                        if (status == TextToSpeech.SUCCESS) {
-                            tts?.speak(
-                                mensaje,
-                                TextToSpeech.QUEUE_FLUSH,
-                                null,
-                                "tts_success"
-                            )
-                        }
-                    }
+                    Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
+                    speak(mensaje)
                     onLoginExitoso()
                 } else {
-                    val mensaje = "Credenciales incorrectas"
-                    Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
-
-                    var tts: TextToSpeech? = null
-                    tts = TextToSpeech(context) { status ->
-                        if (status == TextToSpeech.SUCCESS) {
-                            tts?.speak(
-                                "Usuario o contraseña incorrecta",
-                                TextToSpeech.QUEUE_FLUSH,
-                                null,
-                                "tts1"
-                            )
-                        } else {
-                            Toast.makeText(context, "Error en TTS", Toast.LENGTH_SHORT).show()
-                        }
-                    }
+                    val mensaje = "Usuario o contraseña incorrecta"
+                    Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
+                    speak(mensaje)
                 }
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFF4C542),
-                contentColor = Color(0xFF2E2E2E)
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+                //containerColor = Color(0xFFF4C542),
+                //contentColor = Color(0xFF2E2E2E)
             ),
             shape= RoundedCornerShape(size=6.dp)
         ) {
-            Text("Iniciar Sesión", fontSize = 20.sp, color = Color.White)
+            Text(
+                "Iniciar Sesión",
+                fontSize = (20.sp * escalaDeFuente),
+                color = Color.White)
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -242,26 +286,76 @@ fun LoginFacilAcceso(navController: NavController, onLoginExitoso: () -> Unit){
 
             Text(
                 text = "¿No tienes cuenta? Regístrate aquí",
-                color = Color(0xFFE67E22),
+                //color = Color(0xFFE67E22),
+                color = Color(0xFF359F0B),
                 fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
+                fontSize = (12.sp * escalaDeFuente),
                 modifier = Modifier.clickable {
                     navController.navigate("registro")
                 }
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             Text(
                 text = "¿Olvidaste tu contraseña? Recuperala aquí",
-                color = Color(0xFFE67E22),
+                color = Color(0xFF359F0B),
+                //color = Color(0xFFE67E22),
                 fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
+                fontSize = (12.sp * escalaDeFuente),
                 modifier = Modifier.clickable {
                     navController.navigate("recuperar_password")
                 }
             )
 
+            Spacer(modifier = Modifier.height(24.dp))
+
+            //botones para la accesibilidad
+
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ){
+                Button(
+                    onClick = {
+                        escalaDeFuente += 0.1f
+                        val mensaje = "Has aumentado el tamaño de la letra"
+                        Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
+                        speak(mensaje)
+                    },
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.TextFields, // Icono que representa texto
+                        contentDescription = "Aumentar letra",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Aumentar letra", fontSize = (14.sp * escalaDeFuente), color = Color.White)
+                }
+
+                IconButton(onClick = {
+                    esModoOscuro = !esModoOscuro
+                    speak(if (esModoOscuro) "Modo oscuro activado" else "Modo claro activado")
+                }) {
+                    Icon(
+                        imageVector = if (esModoOscuro) Icons.Default.LightMode else Icons.Default.DarkMode,
+                        contentDescription = if (esModoOscuro) "Modo Claro" else "Modo Oscuro",
+                        modifier = Modifier.size(32.dp),
+                        tint = if (esModoOscuro) Color.Yellow else Color.Black
+                    )
+                }
+
+            }
+
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            tts.stop()
+            tts.shutdown()
+        }
     }
 }
 

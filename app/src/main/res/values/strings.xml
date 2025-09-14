@@ -5,4 +5,6 @@
     <string name="title_activity_registro_user">RegistroUser</string>
     <string name="title_activity_recuperar_password">RecuperarPassword</string>
     <string name="title_activity_inicio">Inicio</string>
+    <string name="title_activity_tablero_pictogramas">TableroPictogramas</string>
+    <string name="title_activity_tablero_pictograma">TableroPictograma</string>
 </resources>
